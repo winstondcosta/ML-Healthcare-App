@@ -41,7 +41,7 @@ from utils import preproces, CoughNet
 #--------------------------------------------------------------------------------------------------------------------------------------------------------
 start_time=time.time()  #Program Start time
 
-left, centre, right = st.beta_columns([1, 2, 1])
+left, centre, right = st.columns([1, 2, 1])
 with left:
     st.image("cirrusrays_logo.jpeg", width=150)
 with centre:
