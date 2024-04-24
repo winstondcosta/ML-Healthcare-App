@@ -294,7 +294,7 @@ if dataset_name == "Heart Attack" or dataset_name == "Breast Cancer":
 
 #Plot output variable
 def plot_op(dataset_name):
-    col1, col2 = st.beta_columns((1, 5))
+    col1, col2 = st.columns((1, 5))
     plt.figure(figsize=(12, 3))
     plt.title("Classes in 'Y'")
     if dataset_name == "Heart Attack":
@@ -531,7 +531,7 @@ def compute(Y_pred,Y_test):
     plt.colorbar()
     st.pyplot()
 
-    c1, c2 = st.beta_columns((4,3))
+    c1, c2 = st.columns((4,3))
     #Output plot
     plt.figure(figsize=(12,6))
     plt.scatter(range(len(Y_pred)),Y_pred,color="yellow",lw=5,label="Predictions")
