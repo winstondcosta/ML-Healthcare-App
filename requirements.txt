@@ -7,7 +7,6 @@ backports.zoneinfo
 base58
 blinker
 cachetools
-certifi
 cffi
 charset-normalizer
 click
