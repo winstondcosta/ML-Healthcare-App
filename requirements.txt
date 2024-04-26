@@ -3,7 +3,6 @@ altair
 astor
 attrs
 audioread
-backports.zoneinfo
 base58
 blinker
 cachetools

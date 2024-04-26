@@ -57,15 +57,18 @@ with centre:
 
 st.sidebar.title("Dataset and Classifier")
 dataset_name = st.sidebar.selectbox("Select the Task: ",('Heart Attack',"Breast Cancer","Skin Cancer","Covid-19"))
+train_inf = "train"
 train_inf = st.sidebar.radio("Do you want to train or use pretrained model", ["train", "Inference"])
 
 if train_inf == 'train':
+    model_path = 'yes'
     if dataset_name == 'Heart Attack' or dataset_name == 'Breast Cancer':
         classifier_name = st.sidebar.selectbox("Select Classifier: ",("Logistic Regression","KNN","SVM","Decision Trees","Random Forest","Gradient Boosting","XGBoost"))
     else:
         classifier_name = st.sidebar.selectbox("Select Classifier: ",("CNN", "RNN"))
 else:
     model_path = st.file_uploader("Choose a h5 file", type=["h5", "pth"])
+    #st.write(model_path)
     if model_path is not None:
         if model_path.name[-3:] == 'pth':
             checkpoint = torch.load(model_path)
@@ -181,8 +184,8 @@ def get_ml_dataset(dataset_name):
 
 def get_dataset(dataset_name): 
     if dataset_name=="Skin Cancer":
-        data_type = 'Image'
         st.header("Skin Cancer Prediction")
+        data_type = 'Image'
         classes = 2
         train_dirs = {
             'benign': 'Data/cancer/train/benign',
@@ -193,6 +196,8 @@ def get_dataset(dataset_name):
             'benign': 'Data/cancer/test/benign',
             'malignant': 'Data/cancer/test/malignant',
         }
+
+        st.subheader("Skin Cancer training samples")
         train = Dataset(train_dirs, display_train_transform, dataset_name)
         train_data = torch.utils.data.DataLoader(train, batch_size=64, shuffle=True)
         images, labels = next(iter(train_data))
@@ -222,6 +227,7 @@ def get_dataset(dataset_name):
                 'covid': 'Data/COVID-19_Radiography_Database/test/covid'
             }	
 
+            st.subheader("Covid-19 X-ray training samples")
             train = Dataset(train_dirs, display_train_transform, dataset_name)
             train_data = torch.utils.data.DataLoader(train, batch_size=64, shuffle=True)
             images, labels = next(iter(train_data))
@@ -299,12 +305,12 @@ def plot_op(dataset_name):
     plt.title("Classes in 'Y'")
     if dataset_name == "Heart Attack":
         col1.write(Y)
-        sns.countplot(Y, palette='gist_heat')
+        sns.countplot(y=Y, hue=Y, palette='gist_heat')
         col2.pyplot()
 
     elif dataset_name == "Breast Cancer":
         col1.write(Y)
-        sns.countplot(Y, palette='gist_heat')
+        sns.countplot(y=Y, hue=Y, palette='gist_heat')
         col2.pyplot()
 
 if dataset_name == "Heart Attack" or dataset_name == "Breast Cancer":
@@ -356,7 +362,7 @@ def add_parameter_ui(clf_name):
     elif clf_name == "Gradient Boosting":
         N = st.sidebar.slider("n_estimators", 50, 500, step=50,value=100)
         LR = st.sidebar.slider("Learning Rate", 0.01, 0.5)
-        L = st.sidebar.selectbox("Loss", ('deviance', 'exponential'))
+        L = st.sidebar.selectbox("Loss", ('exponential', 'log_loss'))
         M = st.sidebar.slider("max_depth",2,20)
         params["N"] = N
         params["LR"] = LR
@@ -393,8 +399,11 @@ def add_parameter_ui(clf_name):
     return params
 
 if train_inf == 'train':
-    params = add_parameter_ui(classifier_name)
-    flag = st.sidebar.button('Apply')
+    if dataset_name in ["Skin Cancer","Covid-19"]:
+        params = add_parameter_ui(classifier_name)
+        flag = st.sidebar.button('Apply')
+    else:
+        params = add_parameter_ui(classifier_name)
 #print(params)
 #print(flag)
 	
@@ -469,7 +478,7 @@ def train(epochs):
 
         for train_step, (images, labels) in enumerate(train_dataset):
             optimizer.zero_grad()
-            print(images.shape)
+            #print(images.shape)
             outputs = clf(images)
             loss = loss_fn(outputs, labels)
             loss.backward()
@@ -483,7 +492,7 @@ def train(epochs):
                 clf.eval() # set model to eval phase
 
                 for val_step, (images, labels) in enumerate(val_dataset):
-                    print(images.shape)
+                    #print(images.shape)
                     outputs = clf(images)
                     loss = loss_fn(outputs, labels)
                     val_loss += loss.item()
@@ -506,16 +515,16 @@ def train(epochs):
         train_loss /= (train_step + 1)
 
         print(f'Training Loss: {train_loss:.4f}')
-    st.write('Training complete..')
+    st.subheader('Training complete..')
 
 if train_inf == 'train':
     if flag :
         # The message and nested widget will remain on the page	
-        if dataset_name == 'Covid-19' or dataset_name == "Skin Cancer":
-            st.write("Training has started")
+        if dataset_name in ["Covid-19", "Skin Cancer"]:
+            st.subheader("Training has started")
             train(params["E"])
-        else:
-            Y_pred,Y_test=model()
+    elif dataset_name in ["Heart Attack","Breast Cancer"]:
+        Y_pred,Y_test=model()
 
 #Plot Output
 def compute(Y_pred,Y_test):
@@ -560,17 +569,27 @@ def compute(Y_pred,Y_test):
     st.text('Precision: {} \nRecall: {} \nF1-Score: {} \nAccuracy: {} %\nMean Squared Error: {}'.format(
         round(precision, 3), round(recall, 3), round(fscore,3), round((acc*100),3), round((mse),3)))
 
-if flag:
-	st.markdown("<hr>",unsafe_allow_html=True)
-	st.header(f"1) Model for Prediction of {dataset_name}")
-	st.subheader(f"Classifier Used: {classifier_name}")
-	#Execution Time
-	end_time=time.time()
-	st.info(f"Total execution time: {round((end_time - start_time),4)} seconds")
+#if flag:
+if train_inf == 'train':
+    if dataset_name in ['Skin Cancer', 'Covid-19']:
+        if flag:
+            st.markdown("<hr>",unsafe_allow_html=True)
+            st.header(f"Model for Prediction of {dataset_name}")
+            st.subheader(f"Classifier Used: {classifier_name}")
+            #Execution Time
+            end_time=time.time()
+            st.info(f"Total execution time: {round((end_time - start_time),4)} seconds")
+    else:
+        st.markdown("<hr>",unsafe_allow_html=True)
+        st.header(f"Model for Prediction of {dataset_name}")
+        st.subheader(f"Classifier Used: {classifier_name}")
+        #Execution Time
+        end_time=time.time()
+        st.info(f"Total execution time: {round((end_time - start_time),4)} seconds")
 
-if flag:
-	if dataset_name == "Heart Attack" or dataset_name == "Breast Cancer":
-		compute(Y_pred,Y_test)
+#if flag:
+    if dataset_name == "Heart Attack" or dataset_name == "Breast Cancer":
+        compute(Y_pred,Y_test)
 
 
 #Get user values
@@ -608,18 +627,18 @@ def user_predict():
     global U_pred
     if dataset_name == "Breast Cancer":
         if clf_name == "XGBoost":
-    	    X = data.drop(["id","diagnosis"], axis=1)
-    	    features = np.array([[user_val[col] for col in X.columns]])
-    	    U_pred = clf.predict(features)
+            X = data.drop(["id","diagnosis"], axis=1)
+            features = np.array([[user_val[col] for col in X.columns]])
+            U_pred = clf.predict(features)
         else:
             X = data.drop(["id","diagnosis"], axis=1)
             U_pred = clf.predict([[user_val[col] for col in X.columns]])
 
     elif dataset_name == "Heart Attack":
         if clf_name == "XGBoost":
-    	    X = data.drop(["output"], axis=1)
-    	    features = np.array([[user_val[col] for col in X.columns]])
-    	    U_pred = clf.predict(features)
+            X = data.drop(["output"], axis=1)
+            features = np.array([[user_val[col] for col in X.columns]])
+            U_pred = clf.predict(features)
         else:
             X = data.drop(["output"], axis=1)
             U_pred = clf.predict([[user_val[col] for col in X.columns]])
@@ -677,14 +696,20 @@ def cnn_predict(img_file_buffer, dataset_name):
             st.write("You are suffering from covid")
 
 def cnn_predict_audio(audio_file):
-    loaded_checkpoint = torch.load('checkpoint.pth')
+    if train_inf == 'inference':
+        loaded_checkpoint = torch.load(model_path)
+    else:
+        loaded_checkpoint = torch.load('checkpoint.pth')
 
     scaler = loaded_checkpoint['scaler']
     encoder = loaded_checkpoint['encoder']
 
     clf.eval()
     df_features = pd.DataFrame(columns=hparams['features'])
-    df_features = df_features.append(preproces(audio_file), ignore_index=True)
+    #df_features = df_features.append(preproces(audio_file), ignore_index=True)
+    preprocessed_features = preproces(audio_file)
+    df_features = pd.DataFrame(preprocessed_features, index=[0])
+    #df_features = pd.concat([df_features, pd.DataFrame(preprocessed_features, index=[0])], ignore_index=True)
     X = np.array(df_features[hparams['features']], dtype=np.float32)
     X = torch.Tensor(scaler.transform(X))
 
@@ -700,31 +725,41 @@ def cnn_predict_audio(audio_file):
     #st.write("You are {encoder.classes_[predictions]})
 
 ## Dataset Type
-if flag:
-    if dataset_name in ['Heart Attack',"Breast Cancer"]:
-        #Predict the status of user.
-        st.markdown("<hr>",unsafe_allow_html=True)
-        st.header("2) User Values")
-        with st.beta_expander("See more"):
-            st.markdown("""
-                In this section you can use your own values to predict the target variable. 
-                Input the required values below and you will get your status based on the values. <br>
-                <p style='color: red;'> 1 - High Risk </p> <p style='color: green;'> 0 - Low Risk </p>
-                """,unsafe_allow_html=True)
-        user_val=user_inputs_ui(dataset_name,data)
-        user_predict()  
+# if flag:
+#     if dataset_name in ['Heart Attack',"Breast Cancer"]:
+#Predict the status of user.
 
-if dataset_name == 'Skin Cancer':
-    img_file_buffer = st.file_uploader("Choose an image", type=['png', 'jpg'])
-    if img_file_buffer is not None:
-        cnn_predict(img_file_buffer, dataset_name)
-elif dataset_name == 'Covid-19':
-    if data_type == "Image":
-        img_file_buffer = st.file_uploader("Choose an image", type=['png', 'jpg'])
+if dataset_name in ["Heart Attack","Breast Cancer"]:
+    st.markdown("<hr>",unsafe_allow_html=True)
+    st.header("User Values")
+    with st.expander("See more"):
+        st.markdown("""
+            In this section you can use your own values to predict the target variable. 
+            Input the required values below and you will get your status based on the values. <br>
+            <p style='color: red;'> 1 - High Risk </p> <p style='color: green;'> 0 - Low Risk </p>
+            """,unsafe_allow_html=True)
+    user_val=user_inputs_ui(dataset_name,data)
+    user_predict()  
+
+#if flag:
+if model_path is not None: 
+    if dataset_name == 'Skin Cancer':
+        st.header("Upload an image for prediction")
+        img_file_buffer = st.file_uploader(" ", type=['png', 'jpg'])
         if img_file_buffer is not None:
             cnn_predict(img_file_buffer, dataset_name)
-    else:
-        audio_file = st.file_uploader("Upload an audio file", type=["mp3","wav"])
-        if audio_file is not None:
-            cnn_predict_audio(audio_file)
-#-------------------------------------------------------------------------END------------------------------------------------------------------------#
+            #img_file_buffer = None
+    elif dataset_name == 'Covid-19':
+        if data_type == "Image":
+            st.header("Upload an image for prediction")
+            img_file_buffer = st.file_uploader(" ", type=['png', 'jpg'])
+            if img_file_buffer is not None:
+                cnn_predict(img_file_buffer, dataset_name)
+                #img_file_buffer = None
+        else:
+            st.header("Upload an audio file for prediction")
+            audio_file = st.file_uploader(" ", type=["mp3","wav"])
+            if audio_file is not None:
+                cnn_predict_audio(audio_file)
+                #audio_file = None
+    #-------------------------------------------------------------------------END------------------------------------------------------------------------#
